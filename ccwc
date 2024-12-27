@@ -1,0 +1,38 @@
+#!/usr/bin/env node
+
+const fs = require('node:fs');
+
+// Export the core function for testing while keeping the script executable
+function getFileSize(filename, flag, callback) {
+  fs.stat(filename, (err, stats) => {
+    if (err) {
+      callback(err);
+      return;
+    }
+
+    if (flag !== '-c') {
+      callback(null, '');
+      return;
+    }
+    callback(null, `${stats.size} ${filename}`);
+  });
+}
+
+// Only run this part when file is executed directly, not when imported
+if (require.main === module) {
+  const flag = process.argv[2];
+  const filename = process.argv[3];
+
+  getFileSize(filename, flag, (err, result) => {
+    if (err) {
+      console.error(err);
+      return;
+    }
+    if (result) {
+      console.log(result);
+    }
+  });
+}
+
+// This export will only be used by the test file
+module.exports = getFileSize;
