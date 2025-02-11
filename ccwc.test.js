@@ -75,3 +75,29 @@ test('ccwc line count functionality', async (t) => {
     fs.unlinkSync(testFilePath);
   });
 });
+
+test('ccwc counts words', async (t) => {
+  // Create a temporary test file with multiple lines
+  const testFilePath = path.join(__dirname, 'test1.txt');
+  const testContent = 'Hello, World!';
+
+  // Set up: Create test file before running tests
+  t.before(() => {
+    fs.writeFileSync(testFilePath, testContent);
+  });
+
+  await t.test('should return word count when -w flag is used', (t) => {
+    return new Promise((resolve) => {
+      getFileSize(testFilePath, '-w', (err, result) => {
+        assert.strictEqual(err, null);
+        assert.strictEqual(result, `2 ${testFilePath}`);
+        resolve();
+      });
+    });
+  });
+
+  // Clean up: Remove test file after all tests complete
+  t.after(() => {
+    fs.unlinkSync(testFilePath);
+  });
+});

@@ -10,7 +10,7 @@ function wc(filename, flag, callback) {
       return;
     }
 
-    if (flag !== '-c' && flag !== '-l') {
+    if (flag !== '-c' && flag !== '-l' && flag !== '-w') {
       callback(null, '');
       return;
     }
@@ -29,6 +29,18 @@ function wc(filename, flag, callback) {
         callback(null, `${lineCount} ${filename}`);
       });
     }
+
+    if (flag === '-w') {
+      fs.readFile(filename, 'utf8', (err, data) => {
+        if (err) {
+          callback(err);
+          return;
+        }
+        const wordCount = data ? data.trim().split(/\s+/).length : 0;
+        callback(null, `${wordCount} ${filename}`);
+      });
+    }
+
   });
 }
 
