@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 const fs = require('node:fs');
+const parseArgs = require('./parseArgs');
 
 // Export the core function for testing while keeping the script executable
 function wc(filename, flag, callback) {
@@ -10,7 +11,7 @@ function wc(filename, flag, callback) {
       return;
     }
 
-    if (flag !== '-c' && flag !== '-l' && flag !== '-w' && flag !== '-m') {
+    if (flag !== '-c' && flag !== '-l' && flag !== '-w' && flag !== '-m' && flag !== null) {
       callback(null, '');
       return;
     }
@@ -52,13 +53,25 @@ function wc(filename, flag, callback) {
       });
     }
 
+    if (flag === null) {
+      fs.readFile(filename, 'utf8', (err, data) => {
+        if (err) {
+          callback(err);
+          return;
+        }
+        const byteCount = stats.size;
+        const lineCount = data ? data.split('\n').length : 0;
+        const wordCount = data ? data.trim().split(/\s+/).length : 0;
+        callback(null, `${byteCount} ${lineCount} ${wordCount} ${filename}`);
+      });
+    }
+
   });
 }
 
 // Only run this part when file is executed directly, not when imported
 if (require.main === module) {
-  const flag = process.argv[2];
-  const filename = process.argv[3];
+  const { flag, filename } = parseArgs(process.argv);
 
   wc(filename, flag, (err, result) => {
     if (err) {

@@ -48,8 +48,44 @@ node --test
 ### Project structure
 ```
 .
+├── test/
+│   ├── parseArgs.test.js
+│   └── ccwc.test.js
 ├── ccwc.js        # Core implementation
-├── ccwc.test.js   # Test file
+├── parseArgs.js   # Pasrse command line arguments
 ├── test.txt       # Text file to validate solution
 └── README.md
 ```
+
+# Using AI Code Assistance
+I used Amazon Q as a plug-in to VS Code. The flow I followed was to write tests, then implement a piece of functionality.
+
+This was great until I needed to handle the default case `ccwc test.txt`. I needed to change the code which handled the command line input and write a test. To write a test, I wanted to extract the code block to a separate file. Amazon Q suggested a method, plus introduced third-party dependencies. Instead, I switched to Claude and got the following script, along with some tests:
+
+```
+function parseArgs(args) {
+  let flag = null;
+  let filename;
+
+  if (args[2] && args[2].startsWith('-') && args[2].length === 2) {
+    flag = args[2];
+    filename = args[3];
+  } else {
+    filename = args[2];
+  }
+
+  return { flag, filename };
+}
+```
+
+This worked.
+
+I'd previously installed CodeScene's VS plug-in to tell me about code smells, which AI coding assistants are very guitly of. Code assistants are very capable producing correct code but it's often not easy to understand. This is where having CodeScene in the loop, which constantly monitors for code health, comes to the rescue.
+
+Here, CodeScene noticed a complex conditional:
+![image](docs/complex-conditional.png)
+
+And here's the refacting CodeScene suggested and I accepted:
+![image](docs/refactoring-suggestion.png)
+
+Watch [Adam Tornhill's talk](https://www.youtube.com/watch?v=9ciQx0k2bXM) for more info about the value of pairing code quality tools with AI coding assitants to appreciate the value this brings.

@@ -2,7 +2,7 @@ const test = require('node:test');
 const assert = require('node:assert');
 const fs = require('node:fs');
 const path = require('node:path');
-const getFileSize = require('./ccwc');
+const getFileSize = require('../ccwc');
 
 test('ccwc file size functionality', async (t) => {
   // Create a temporary test file
@@ -118,6 +118,32 @@ test('ccwc counts number of characters', async (t) => {
       getFileSize(testFilePath, '-m', (err, result) => {
         assert.strictEqual(err, null);
         assert.strictEqual(result, `13 ${testFilePath}`);
+        resolve();
+      });
+    });
+  });
+
+  // Clean up: Remove test file after all tests complete
+  t.after(() => {
+    fs.unlinkSync(testFilePath);
+  });
+});
+
+test('ccwc supports default option, i.e. no options are provided, which is equivalent to the -c, -l and -w options', async (t) => {
+  // Create a temporary test file with multiple lines
+  const testFilePath = path.join(__dirname, 'test1.txt');
+  const testContent = 'Hello, World!';
+
+  // Set up: Create test file before running tests
+  t.before(() => {
+    fs.writeFileSync(testFilePath, testContent);
+  });
+
+  await t.test('should return default count when no flag is used', (t) => {
+    return new Promise((resolve) => {
+      getFileSize(testFilePath, null, (err, result) => {
+        assert.strictEqual(err, null);
+        assert.strictEqual(result, `13 1 2 ${testFilePath}`);
         resolve();
       });
     });
