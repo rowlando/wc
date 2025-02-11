@@ -3,18 +3,32 @@
 const fs = require('node:fs');
 
 // Export the core function for testing while keeping the script executable
-function getFileSize(filename, flag, callback) {
+function wc(filename, flag, callback) {
   fs.stat(filename, (err, stats) => {
     if (err) {
       callback(err);
       return;
     }
 
-    if (flag !== '-c') {
+    if (flag !== '-c' && flag !== '-l') {
       callback(null, '');
       return;
     }
-    callback(null, `${stats.size} ${filename}`);
+
+    if (flag === '-c') {
+      callback(null, `${stats.size} ${filename}`);
+    }
+
+    if (flag === '-l') {
+      fs.readFile(filename, 'utf8', (err, data) => {
+        if (err) {
+          callback(err);
+          return;
+        }
+        const lineCount = data ? data.split('\n').length : 0;
+        callback(null, `${lineCount} ${filename}`);
+      });
+    }
   });
 }
 
@@ -23,7 +37,7 @@ if (require.main === module) {
   const flag = process.argv[2];
   const filename = process.argv[3];
 
-  getFileSize(filename, flag, (err, result) => {
+  wc(filename, flag, (err, result) => {
     if (err) {
       console.error(err);
       return;
@@ -35,4 +49,4 @@ if (require.main === module) {
 }
 
 // This export will only be used by the test file
-module.exports = getFileSize;
+module.exports = wc;
