@@ -2,20 +2,46 @@ const test = require('node:test');
 const assert = require('node:assert');
 const parseArgs = require('../parseArgs');
 
-test('ccwc command line argument parsing', async (t) => {
-  await t.test('should parse flag and filename when flag is provided', () => {
-    const args = ['node', 'script.js', '-l', 'test.txt'];
-    const { flag, filename } = parseArgs(args);
+test('parseArgs', async (t) => {
+  await t.test('valid cases', async (t) => {
+    await t.test('parses filename only', () => {
+      const result = parseArgs(['node', 'script.js', 'file.txt']);
+      assert.deepStrictEqual(result, { flag: null, filename: 'file.txt' });
+    });
 
-    assert.strictEqual(flag, '-l');
-    assert.strictEqual(filename, 'test.txt');
+    await t.test('parses flag and filename', () => {
+      const result = parseArgs(['node', 'script.js', '-l', 'file.txt']);
+      assert.deepStrictEqual(result, { flag: '-l', filename: 'file.txt' });
+    });
   });
 
-  await t.test('should parse filename only when no flag is provided', () => {
-    const args = ['node', 'script.js', 'test.txt'];
-    const { flag, filename } = parseArgs(args);
+  await t.test('error cases', async (t) => {
+    await t.test('throws on missing filename', () => {
+      assert.throws(
+        () => parseArgs(['node', 'script.js']),
+        /Missing required filename argument/
+      );
+    });
 
-    assert.strictEqual(flag, null);
-    assert.strictEqual(filename, 'test.txt');
+    await t.test('throws on missing filename after flag', () => {
+      assert.throws(
+        () => parseArgs(['node', 'script.js', '-l']),
+        /Missing required filename after flag/
+      );
+    });
+
+    await t.test('throws on too many arguments without flag', () => {
+      assert.throws(
+        () => parseArgs(['node', 'script.js', 'file.txt', 'extra']),
+        /Too many arguments/
+      );
+    });
+
+    await t.test('throws on too many arguments with flag', () => {
+      assert.throws(
+        () => parseArgs(['node', 'script.js', '-l', 'file.txt', 'extra']),
+        /Too many arguments/
+      );
+    });
   });
 });
