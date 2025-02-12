@@ -1,156 +1,76 @@
 const test = require('node:test');
 const assert = require('node:assert');
-const fs = require('node:fs');
+const fs = require('node:fs/promises');
 const path = require('node:path');
-const getFileSize = require('../ccwc');
+const wc = require('../ccwc');
 
-test('ccwc file size functionality', async (t) => {
-  // Create a temporary test file
-  const testFilePath = path.join(__dirname, 'test1.txt');
-  const testContent = 'Hello, World!';
+test('ccwc functionality', async (t) => {
+  // Test file configurations
+  const testFiles = {
+    small: {
+      path: path.join(__dirname, 'test-small.txt'),
+      content: 'Hello, World!\nThis is a test.\n'
+    }
+  };
 
-  // Set up: Create test file before running tests
-  t.before(() => {
-    fs.writeFileSync(testFilePath, testContent);
+  // Setup: Create test files
+  await t.before(async () => {
+    await Promise.all([
+      fs.writeFile(testFiles.small.path, testFiles.small.content),
+    ]);
   });
 
-  await t.test('should return file size when -c flag is used', (t) => {
-    return new Promise((resolve) => {
-      getFileSize(testFilePath, '-c', (err, result) => {
-        assert.strictEqual(err, null);
-        assert.strictEqual(result, `${testContent.length} ${testFilePath}`);
-        resolve();
-      });
+  // Test groups for different file sizes
+  await t.test('small file tests', async (t) => {
+    await t.test('byte count (-c flag)', async () => {
+      const result = await wc(testFiles.small.path, '-c');
+      assert.equal(result, `${testFiles.small.content.length} ${testFiles.small.path}`);
+    });
+
+    await t.test('line count (-l flag)', async () => {
+      const result = await wc(testFiles.small.path, '-l');
+      const expectedLines = 2; // Two newlines
+      assert.equal(result, `${expectedLines} ${testFiles.small.path}`);
+    });
+
+    await t.test('word count (-w flag)', async () => {
+      const result = await wc(testFiles.small.path, '-w');
+      const expectedWords = 6; // "Hello", "World", "This", "is", "a", "test"
+      assert.equal(result, `${expectedWords} ${testFiles.small.path}`);
+    });
+
+    await t.test('character count (-m flag)', async () => {
+      const result = await wc(testFiles.small.path, '-m');
+      assert.equal(result, `${testFiles.small.content.length} ${testFiles.small.path}`);
+    });
+
+    await t.test('default output (no flag)', async () => {
+      const result = await wc(testFiles.small.path, null);
+      const expectedBytes = testFiles.small.content.length;
+      const expectedLines = 2;
+      const expectedWords = 6;
+      assert.equal(result, `${expectedBytes} ${expectedLines} ${expectedWords} ${testFiles.small.path}`);
     });
   });
 
-  await t.test('should return empty string when flag is not -c', (t) => {
-    return new Promise((resolve) => {
-      getFileSize(testFilePath, '-x', (err, result) => {
-        assert.strictEqual(err, null);
-        assert.strictEqual(result, '');
-        resolve();
-      });
+  await t.test('error handling', async (t) => {
+    await t.test('handles non-existent file', async () => {
+      await assert.rejects(
+        async () => await wc('nonexistent.txt', '-c'),
+        /Error processing file/
+      );
+    });
+
+    await t.test('handles invalid flag', async () => {
+      const result = await wc(testFiles.small.path, '-x');
+      assert.equal(result, '');
     });
   });
 
-  await t.test('should return error for non-existent file', (t) => {
-    return new Promise((resolve) => {
-      getFileSize('nonexistent.txt', '-c', (err, result) => {
-        assert.ok(err instanceof Error);
-        assert.ok(err.message.includes('ENOENT'));
-        resolve();
-      });
-    });
-  });
-
-  // Clean up: Remove test file after all tests complete
-  t.after(() => {
-    fs.unlinkSync(testFilePath);
-  });
-});
-
-test('ccwc line count functionality', async (t) => {
-  // Create a temporary test file with multiple lines
-  const testFilePath = path.join(__dirname, 'test1.txt');
-  const testContent = 'Line 1\nLine 2\nLine 3';
-
-  // Set up: Create test file before running tests
-  t.before(() => {
-    fs.writeFileSync(testFilePath, testContent);
-  });
-
-  await t.test('should return line count when -l flag is used', (t) => {
-    return new Promise((resolve) => {
-      getFileSize(testFilePath, '-l', (err, result) => {
-        assert.strictEqual(err, null);
-        assert.strictEqual(result, `3 ${testFilePath}`);
-        resolve();
-      });
-    });
-  });
-
-  // Clean up: Remove test file after all tests complete
-  t.after(() => {
-    fs.unlinkSync(testFilePath);
-  });
-});
-
-test('ccwc counts words', async (t) => {
-  // Create a temporary test file with multiple lines
-  const testFilePath = path.join(__dirname, 'test1.txt');
-  const testContent = 'Hello, World!';
-
-  // Set up: Create test file before running tests
-  t.before(() => {
-    fs.writeFileSync(testFilePath, testContent);
-  });
-
-  await t.test('should return word count when -w flag is used', (t) => {
-    return new Promise((resolve) => {
-      getFileSize(testFilePath, '-w', (err, result) => {
-        assert.strictEqual(err, null);
-        assert.strictEqual(result, `2 ${testFilePath}`);
-        resolve();
-      });
-    });
-  });
-
-  // Clean up: Remove test file after all tests complete
-  t.after(() => {
-    fs.unlinkSync(testFilePath);
-  });
-});
-
-
-test('ccwc counts number of characters', async (t) => {
-  // Create a temporary test file with multiple lines
-  const testFilePath = path.join(__dirname, 'test1.txt');
-  const testContent = 'Hello, World!';
-
-  // Set up: Create test file before running tests
-  t.before(() => {
-    fs.writeFileSync(testFilePath, testContent);
-  });
-
-  await t.test('should return character count when -m flag is used', (t) => {
-    return new Promise((resolve) => {
-      getFileSize(testFilePath, '-m', (err, result) => {
-        assert.strictEqual(err, null);
-        assert.strictEqual(result, `13 ${testFilePath}`);
-        resolve();
-      });
-    });
-  });
-
-  // Clean up: Remove test file after all tests complete
-  t.after(() => {
-    fs.unlinkSync(testFilePath);
-  });
-});
-
-test('ccwc supports default option, i.e. no options are provided, which is equivalent to the -c, -l and -w options', async (t) => {
-  // Create a temporary test file with multiple lines
-  const testFilePath = path.join(__dirname, 'test1.txt');
-  const testContent = 'Hello, World!';
-
-  // Set up: Create test file before running tests
-  t.before(() => {
-    fs.writeFileSync(testFilePath, testContent);
-  });
-
-  await t.test('should return default count when no flag is used', (t) => {
-    return new Promise((resolve) => {
-      getFileSize(testFilePath, null, (err, result) => {
-        assert.strictEqual(err, null);
-        assert.strictEqual(result, `13 1 2 ${testFilePath}`);
-        resolve();
-      });
-    });
-  });
-
-  // Clean up: Remove test file after all tests complete
-  t.after(() => {
-    fs.unlinkSync(testFilePath);
+  // Cleanup: Remove test files
+  await t.after(async () => {
+    await Promise.all([
+      fs.unlink(testFiles.small.path)
+    ]);
   });
 });

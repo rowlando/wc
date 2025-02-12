@@ -1,87 +1,81 @@
 #!/usr/bin/env node
 
 const fs = require('node:fs');
+const { createReadStream } = require('node:fs');
+const { pipeline } = require('node:stream/promises');
+const { createInterface } = require('node:readline');
 const parseArgs = require('./parseArgs');
 
 // Export the core function for testing while keeping the script executable
-function wc(filename, flag, callback) {
-  fs.stat(filename, (err, stats) => {
-    if (err) {
-      callback(err);
-      return;
-    }
-
-    if (flag !== '-c' && flag !== '-l' && flag !== '-w' && flag !== '-m' && flag !== null) {
-      callback(null, '');
-      return;
-    }
-
+async function wc(filename, flag) {
+  try {
+    // For byte count, use stat instead of reading the file
     if (flag === '-c') {
-      callback(null, `${stats.size} ${filename}`);
+      const stats = await fs.promises.stat(filename);
+      return `${stats.size} ${filename}`;
     }
 
-    if (flag === '-l') {
-      fs.readFile(filename, 'utf8', (err, data) => {
-        if (err) {
-          callback(err);
-          return;
-        }
-        const lineCount = data ? data.split('\n').length : 0;
-        callback(null, `${lineCount} ${filename}`);
-      });
+    // Validate flag early
+    const validFlags = new Set(['-l', '-w', '-m', null]);
+    if (!validFlags.has(flag)) {
+      return '';
     }
 
-    if (flag === '-w') {
-      fs.readFile(filename, 'utf8', (err, data) => {
-        if (err) {
-          callback(err);
-          return;
-        }
-        const wordCount = data ? data.trim().split(/\s+/).length : 0;
-        callback(null, `${wordCount} ${filename}`);
-      });
+    // Use streams for memory-efficient file reading
+    const counts = {
+      lines: 0,
+      words: 0,
+      chars: 0,
+      bytes: 0
+    };
+
+    const fileStream = createReadStream(filename, {
+      encoding: 'utf8',
+      highWaterMark: 64 * 1024 // 64KB chunks for optimal performance
+    });
+
+    const rl = createInterface({
+      input: fileStream,
+      crlfDelay: Infinity
+    });
+
+    // Process file line by line
+    for await (const line of rl) {
+      counts.lines++;
+      counts.chars += line.length + 1; // +1 for the newline
+      counts.words += line.trim().split(/\s+/).filter(Boolean).length;
     }
 
-    if (flag === '-m') {
-      fs.readFile(filename, 'utf8', (err, data) => {
-        if (err) {
-          callback(err);
-          return;
-        }
-        const charCount = data ? data.length : 0;
-        callback(null, `${charCount} ${filename}`);
-      });
-    }
+    // Get byte count from stats
+    counts.bytes = (await fs.promises.stat(filename)).size;
 
-    if (flag === null) {
-      fs.readFile(filename, 'utf8', (err, data) => {
-        if (err) {
-          callback(err);
-          return;
-        }
-        const byteCount = stats.size;
-        const lineCount = data ? data.split('\n').length : 0;
-        const wordCount = data ? data.trim().split(/\s+/).length : 0;
-        callback(null, `${byteCount} ${lineCount} ${wordCount} ${filename}`);
-      });
+    // Return appropriate count based on flag
+    switch (flag) {
+      case '-l':
+        return `${counts.lines} ${filename}`;
+      case '-w':
+        return `${counts.words} ${filename}`;
+      case '-m':
+        return `${counts.chars} ${filename}`;
+      case null:
+        return `${counts.bytes} ${counts.lines} ${counts.words} ${filename}`;
+      default:
+        return '';
     }
-
-  });
+  } catch (error) {
+    throw new Error(`Error processing file: ${error.message}`);
+  }
 }
 
 // Only run this part when file is executed directly, not when imported
 if (require.main === module) {
   const { flag, filename } = parseArgs(process.argv);
 
-  wc(filename, flag, (err, result) => {
-    if (err) {
-      console.error(err);
-      return;
-    }
-    if (result) {
-      console.log(result);
-    }
-  });
+  wc(filename, flag)
+      .then(result => {
+        if (result) console.log(result);
+      })
+      .catch(console.error);
 }
 
 // This export will only be used by the test file
