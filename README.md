@@ -35,6 +35,13 @@ The command-line interface is implemented using:
 ### Prerequisites
 - Node.js (latest LTS recommended)
 
+### Development Environment
+You can use Flox to manage your development environment:
+
+1. Install Flox from https://flox.dev/docs/install-flox/
+1. Clone this repository
+1. Run `flox activate` in the project folder, which will install Node for you.
+
 ### Testing
 ```bash
 node --test
